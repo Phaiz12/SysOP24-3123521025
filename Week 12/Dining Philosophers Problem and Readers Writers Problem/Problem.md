@@ -16,148 +16,10 @@ Dining philosophers Problem adalah masalah klasik dalam teori komputer yang meng
 3.Concurrency : Mengelola akses ke garpu-garpu secara simultan oleh beberapa filsuf.
 
 **Solusi dengan Sinkronisasi**
-1. Algoritma Djikstra (semaphore):
-  Menggunakan semaphore untuk memastikan bahwa hanya satu filsuf yang dapat mengakses garpu pada satu waktu. Dua semaphore digunakan untuk setiap garpu
 
-
-#include <pthread.h>
-
-#include <semaphore.h>
-
-#include <stdio.h>
-
-
-#define N 5
-
-#define THINKING 2
-
-#define HUNGRY 1
-
-#define EATING 0
-
-#define LEFT (i + 4) % N
-
-#define RIGHT (i + 1) % N
-
-
-int state[N];
-
-int phil[N] = {0, 1, 2, 3, 4};
-
-sem_t mutex;
-
-sem_t S[N];
-
-
-void test(int i) {
-
-    if (state[i] == HUNGRY && state[LEFT] != EATING && state[RIGHT] != EATING) {
-    
-        state[i] = EATING;
-        
-        sleep(2);
-        
-        printf("Philosopher %d takes fork %d and %d\n", i + 1, LEFT + 1, i + 1);
-        
-        printf("Philosopher %d is Eating\n", i + 1);
-        
-        sem_post(&S[i]);
-    }
-    
-}
-
-
-
-
-void take_fork(int i) {
-
-    sem_wait(&mutex);
-    
-    state[i] = HUNGRY;
-    
-    printf("Philosopher %d is Hungry\n", i + 1);
-    
-    test(i);
-    
-    sem_post(&mutex);
-    
-    sem_wait(&S[i]);
-    
-    sleep(1);
-}
-
-
-
-
-void put_fork(int i) {
-
-    sem_wait(&mutex);
-    
-    state[i] = THINKING;
-    
-    printf("Philosopher %d putting fork %d and %d down\n", i + 1, LEFT + 1, i + 1);
-    
-    printf("Philosopher %d is thinking\n", i + 1);
-    
-    test(LEFT);
-    
-    test(RIGHT);
-    
-    sem_post(&mutex);
-}
-
-
-
-
-void* philosopher(void* num) {
-
-    while (1) {
-    
-        int* i = num;
-        
-        sleep(1);
-        
-        take_fork(*i);
-        
-        sleep(0);
-        
-        put_fork(*i);
-    }
-    
-}
-
-
-
-
-int main() {
-
-    int i;
-    
-    pthread_t thread_id[N];
-    
-    sem_init(&mutex, 0, 1);
-    
-    for (i = 0; i < N; i++)
-    
-        sem_init(&S[i], 0, 0);
-    for 
-    (i = 0; i < N; i++) {
-    
-        pthread_create(&thread_id[i], NULL, philosopher, &phil[i]);
-        
-        printf("Philosopher %d is thinking\n", i + 1);
-    }
-    
-    
-    for (i = 0; i < N; i++)
-    
-        pthread_join(thread_id[i], NULL);
-}
-
-
-2. Resource Hierarchy Solution :
+1. Resource Hierarchy Solution :
    Mengatur prioritas pada setiap garpu sehingga filsuf mengambil garpu dengan prioritas lebih rendah terlebih dahulu, kemudia mengambil garpu dengan prioritas lebih tinggi. Misalnya, setiap filsuf harus mengambil garpu dengan nomor lebih rendah terlebih dahulu dan garpu nomor lebih tinggi kedua.
-3. Chandy/Misra Solution :
+2. Chandy/Misra Solution :
    Setiap garpu ditandai sebagai 'bersih' atau 'kotor', dan filsuf hanya bisa mengambil garpu jika garpu itu 'kotor'. Setelah makan, filsuf mencuci dan meletakkan kembali garpu sebagai 'bersih'. Ini memastikan bahwa tidak ada dua filsuf yang memegang dua garpu sekaligus dan mencegah deadlock.
 
 
@@ -179,148 +41,69 @@ Raders Writers Problem adalah masalah sinkronisasi yang muncul dalam sistem oper
 3.Third Readers Writers Problem (No Priority): Tidak ada prioritas khusus antara readers dan writers. Pendekatan ini mencoba menyeimbangkan akses antara readers dan writers.
 
 **Solusi dengan Sinkronisasi**
+1. First Readers-Writers Problem (Reader Priority)
 
-Berikut adalah contoh solusi untuk Readers Writers Problem dengan penekanan pada reader priority menggunakan semaphore dan mutex :
-
-
-#include <pthread.h>
-
-#include <semaphore.h>
-
-#include <stdio.h>
+Reader Priority:
 
 
+Tujuan: Memastikan bahwa pembaca (readers) dapat mengakses data segera dan tidak diblokir oleh penulis (writers) yang sedang 
+menunggu.
 
-sem_t mutex, writeblock;
+Mekanisme:
 
-int data = 0, rcount = 0;
+Ketika seorang pembaca ingin membaca data, ia akan meningkatkan penghitung pembaca aktif (read_count).
+Jika ini adalah pembaca pertama, pembaca akan mengunci akses ke penulis agar penulis tidak dapat menulis.
+Pembaca lainnya dapat terus membaca tanpa halangan.
+Ketika pembaca selesai membaca, penghitung pembaca aktif akan berkurang.
+Jika tidak ada lagi pembaca yang aktif, akses untuk menulis akan dibuka kembali sehingga penulis dapat menulis.
 
+Keuntungan: Pembaca memiliki prioritas lebih tinggi sehingga pembaca tidak perlu menunggu penulis.
 
-
-void* reader(void* arg) {
-
-    int f = ((int)arg);
-    
-    sem_wait(&mutex);
-    
-    rcount = rcount + 1;
-    
-    if (rcount == 1)
-    
-        sem_wait(&writeblock);
-    sem_
-    post(&mutex);
-    
-    printf("Reader %d: read data = %d\n", f, data);
-    
-    sleep(1);
-    
-    sem_wait(&mutex);
-    
-    rcount = rcount - 1;
-    
-    if (rcount == 0)
-    
-        sem_post(&writeblock);
-    sem_
-    post(&mutex);
-}
+Kerugian: Penulis dapat mengalami kelaparan (starvation) jika selalu ada pembaca yang ingin membaca.
 
 
+2. Second Readers-Writers Problem (Writer Priority)
+
+Writer Priority:
+
+Tujuan: Memastikan bahwa penulis (writers) tidak mengalami kelaparan (starvation) dengan memberikan mereka prioritas untuk menulis data.
 
 
-void* writer(void* arg) {
+Mekanisme:
 
-    int f = ((int)arg);
-    
-    sem_wait(&writeblock);
-    
-    data++;
-    
-    printf("Writer %d: wrote data = %d\n", f, data);
-    
-    sleep(1);
-    
-    sem_post(&writeblock);
-}
+Ketika seorang penulis ingin menulis data, ia akan mengantri untuk mendapatkan akses.
+Jika ada pembaca yang sedang membaca, penulis akan menunggu sampai semua pembaca selesai.
+Setelah semua pembaca selesai, penulis akan mendapatkan akses eksklusif untuk menulis data.
+Pembaca yang datang saat penulis sedang menunggu akan ditahan sampai penulis selesai menulis.
+
+Keuntungan: Penulis memiliki prioritas lebih tinggi sehingga mereka tidak perlu menunggu terlalu lama.
+
+Kerugian: Pembaca bisa mengalami penundaan jika banyak penulis yang ingin menulis.
 
 
+3. Third Readers-Writers Problem (No Priority)
+No Priority:
+
+Tujuan: Menyeimbangkan akses antara pembaca (readers) dan penulis (writers) tanpa memberikan prioritas khusus kepada salah satu pihak.
 
 
-int main() {
+Mekanisme:
 
-    int i, b; 
-    
-    pthread_t rtid[5], wtid[5];
-    
-    sem_init(&mutex, 0, 1);
-    
-    sem_init(&writeblock, 0, 1);
-    
-    for (i = 0; i <= 2; i++) {
-    
-        pthread_create(&wtid[i], NULL, writer, (void*)i);
-        
-        pthread_create(&rtid[i], NULL, reader, (void*)i);
-    }
-    
-    
-    for (i = 0; i <= 2; i++) {
-    
-        pthread_join(wtid[i], NULL);
-        
-        pthread_join(rtid[i], NULL);
-    }
-    
-    
-    return 0;
-}
+Pembaca dan penulis akan mengantri secara bergantian untuk mendapatkan akses ke data.
+Ketika seorang pembaca atau penulis tiba, mereka akan mengantri di antrian yang sama.
+Pembaca yang tiba pertama akan mendapatkan akses dan bisa membaca data selama tidak ada penulis yang sedang menunggu.
+Jika penulis tiba saat pembaca sedang membaca, penulis akan menunggu sampai semua pembaca selesai.
+Setelah penulis selesai menulis, antrian akan di-check lagi untuk menentukan apakah pembaca atau penulis berikutnya yang akan mendapatkan akses.
+
+Keuntungan: Akses lebih seimbang antara pembaca dan penulis, mengurangi risiko kelaparan untuk kedua pihak.
+
+Kerugian: Tidak ada prioritas jelas sehingga beberapa skenario mungkin memerlukan penyesuaian tambahan untuk benar-benar menyeimbangkan beban kerja.
 
 
-Penjelasan Solusi
+Kesimpulan
 
-Semaphore:
+Reader Priority: Memastikan pembaca tidak diblokir oleh penulis, tetapi penulis bisa mengalami kelaparan.
 
+Writer Priority: Memastikan penulis tidak mengalami kelaparan, tetapi pembaca bisa ditunda.
 
-
-mutex: Mengontrol akses ke variabel counter rcount.
-
-writeblock: Mengontrol akses eksklusif untuk penulis.
-
-Reader:
-
-
-
-sem_wait(&mutex): Reader mendapatkan akses ke rcount dan menambahkannya.
-
-Jika rcount adalah 1, maka ini adalah reader pertama yang masuk, dan reader pertama akan memblokir writer dengan sem_wait(&writeblock).
-
-sem_post(&mutex): Reader selesai mengupdate rcount.
-
-Reader membaca data.
-
-sem_wait(&mutex): Reader mendapatkan kembali akses ke rcount dan menguranginya.
-
-Jika rcount menjadi 0, maka ini adalah reader terakhir yang keluar, dan reader terakhir akan melepaskan blok pada writer dengan sem_post(&writeblock).
-
-sem_post(&mutex): Reader selesai mengupdate rcount.
-
-
-Writer:
-
-
-
-sem_wait(&writeblock): Writer memblokir akses untuk reader dan writer lainnya.
-
-Writer menulis data.
-
-sem_post(&writeblock): Writer melepaskan blok sehingga reader dan writer lainnya dapat mengakses.
-
-Solusi ini memastikan bahwa multiple readers dapat membaca data secara bersamaan, tetapi penulisan data hanya bisa dilakukan secara eksklusif oleh satu writer tanpa gangguan dari reader atau writer lain.
-
-
-
-
-
-
-   
+No Priority: Berusaha menyeimbangkan akses antara pembaca dan penulis, mengurangi risiko kelaparan untuk kedua pihak.
